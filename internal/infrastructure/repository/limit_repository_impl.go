@@ -47,13 +47,11 @@ func (r *limitRepositoryImpl) Update(ctx context.Context, limit *entity.Customer
 	return nil
 }
 
-// Simplified UpdateUsedAmount with proper transaction handling
 func (r *limitRepositoryImpl) UpdateUsedAmount(ctx context.Context, customerID uint64, tenorMonths int, amount float64) error {
-	// Execute within a transaction for atomicity
+
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var limit entity.CustomerLimit
 
-		// Use SELECT FOR UPDATE to lock the row
 		if err := tx.Set("gorm:query_option", "FOR UPDATE").
 			Where("customer_id = ? AND tenor_months = ?", customerID, tenorMonths).
 			First(&limit).Error; err != nil {
