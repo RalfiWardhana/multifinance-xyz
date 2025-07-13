@@ -76,7 +76,7 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 }
 
 func (h *CustomerHandler) validateCustomerRequest(req *dto.CreateCustomerRequest) string {
-	// 1. Check if exactly 4 limits are provided
+
 	if len(req.Limits) < 4 {
 		missingCount := 4 - len(req.Limits)
 		return fmt.Sprintf("Incomplete tenor limits. You provided %d tenor(s), but PT XYZ requires exactly 4 tenors (1, 2, 3, 4 months). Missing %d tenor(s).",
@@ -89,18 +89,16 @@ func (h *CustomerHandler) validateCustomerRequest(req *dto.CreateCustomerRequest
 			len(req.Limits), extraCount)
 	}
 
-	// 2. Check for valid tenor values and duplicates
 	tenorMap := make(map[int]bool)
 	providedTenors := make([]int, 0)
 
 	for i, limit := range req.Limits {
-		// Check valid tenor range
+
 		if limit.TenorMonths < 1 || limit.TenorMonths > 4 {
 			return fmt.Sprintf("Invalid tenor at position %d: %d months is not allowed. PT XYZ only accepts tenors: 1, 2, 3, 4 months.",
 				i+1, limit.TenorMonths)
 		}
 
-		// Check for duplicates
 		if tenorMap[limit.TenorMonths] {
 			return fmt.Sprintf("Duplicate tenor detected: %d months appears more than once. Each tenor (1, 2, 3, 4) must appear exactly once.",
 				limit.TenorMonths)
@@ -109,14 +107,12 @@ func (h *CustomerHandler) validateCustomerRequest(req *dto.CreateCustomerRequest
 		tenorMap[limit.TenorMonths] = true
 		providedTenors = append(providedTenors, limit.TenorMonths)
 
-		// Check limit amount
 		if limit.LimitAmount <= 0 {
 			return fmt.Sprintf("Invalid limit amount for tenor %d months: %.2f. Limit amount must be greater than 0.",
 				limit.TenorMonths, limit.LimitAmount)
 		}
 	}
 
-	// 3. Check if all required tenors (1,2,3,4) are present
 	requiredTenors := []int{1, 2, 3, 4}
 	missingTenors := make([]int, 0)
 
