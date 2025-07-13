@@ -13,12 +13,12 @@ type CreateCustomerRequest struct {
 	Salary          float64              `json:"salary" binding:"required,min=0"`
 	KTPPhotoPath    string               `json:"ktp_photo_path"`
 	SelfiePhotoPath string               `json:"selfie_photo_path"`
-	Limits          []CreateLimitRequest `json:"limits" binding:"required,min=1,max=4"` // Allow 1-4, validate manually
+	Limits          []CreateLimitRequest `json:"limits" binding:"required,min=1,max=4"`
 }
 
 type CreateLimitRequest struct {
-	TenorMonths int     `json:"tenor_months" binding:"required,min=1,max=4"` // Basic range validation
-	LimitAmount float64 `json:"limit_amount" binding:"required,min=1"`       // Must be > 0
+	TenorMonths int     `json:"tenor_months" binding:"required,min=1,max=4"`
+	LimitAmount float64 `json:"limit_amount" binding:"required,min=1"`
 }
 
 type CustomerResponse struct {

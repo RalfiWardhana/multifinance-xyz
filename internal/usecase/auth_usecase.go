@@ -1,4 +1,3 @@
-// File: internal/usecase/auth_usecase.go (Fixed version)
 package usecase
 
 import (

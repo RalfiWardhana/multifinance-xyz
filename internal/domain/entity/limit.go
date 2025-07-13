@@ -1,4 +1,3 @@
-// File: internal/domain/entity/limit.go (Simple fix - no generated column)
 package entity
 
 import (
@@ -13,12 +12,9 @@ type CustomerLimit struct {
 	UsedAmount  float64   `json:"used_amount" gorm:"type:decimal(15,2);default:0"`
 	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
-
-	// Relations
-	Customer Customer `json:"customer" gorm:"foreignKey:CustomerID;constraint:OnDelete:CASCADE"`
+	Customer    Customer  `json:"customer" gorm:"foreignKey:CustomerID;constraint:OnDelete:CASCADE"`
 }
 
-// AvailableAmount calculates available amount dynamically
 func (cl *CustomerLimit) AvailableAmount() float64 {
 	return cl.LimitAmount - cl.UsedAmount
 }

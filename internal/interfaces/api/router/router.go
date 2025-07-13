@@ -1,4 +1,3 @@
-// File: internal/interfaces/api/router/router.go (Fixed version with auth enabled)
 package router
 
 import (

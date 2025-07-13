@@ -1,4 +1,3 @@
-// File: internal/interfaces/api/middleware/auth_middleware.go (Fixed version)
 package middleware
 
 import (

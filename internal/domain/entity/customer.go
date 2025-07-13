@@ -1,4 +1,3 @@
-// File: internal/domain/entity/customer.go (Fixed version)
 package entity
 
 import (
