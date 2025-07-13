@@ -31,7 +31,6 @@ func (rl *rateLimiter) Allow(key string) bool {
 	now := time.Now()
 	windowStart := now.Add(-rl.window)
 
-	// Clean old requests
 	requests := rl.requests[key]
 	var validRequests []time.Time
 	for _, req := range requests {

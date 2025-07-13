@@ -32,7 +32,6 @@ func AuthMiddleware(authUseCase usecase.AuthUseCase) gin.HandlerFunc {
 			return
 		}
 
-		// Type assertion with safety check
 		customerIDFloat, ok := claims["customer_id"].(float64)
 		if !ok {
 			response.Error(c, http.StatusUnauthorized, "Invalid token claims", "Invalid customer_id in token")

@@ -14,14 +14,13 @@ func SetupRoutes(
 	customerHandler *handler.CustomerHandler,
 	transactionHandler *handler.TransactionHandler,
 	authHandler *handler.AuthHandler,
-	authUseCase usecase.AuthUseCase, // Added authUseCase parameter
+	authUseCase usecase.AuthUseCase,
 ) {
 	// Global middleware
 	r.Use(middleware.CORSMiddleware())
 	r.Use(middleware.SecurityHeadersMiddleware())
 	r.Use(middleware.LoggingMiddleware())
 	r.Use(middleware.RateLimitMiddleware(100, time.Minute)) // 100 requests per minute
-	//r.Use(middleware.InputValidationMiddleware())           // Added input validation
 	r.Use(gin.Recovery())
 
 	// Health check

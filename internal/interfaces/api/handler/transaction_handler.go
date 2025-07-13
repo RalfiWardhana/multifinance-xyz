@@ -28,7 +28,6 @@ func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
 		return
 	}
 
-	// Create transaction entity
 	transaction := &entity.Transaction{
 		CustomerID:        req.CustomerID,
 		TenorMonths:       req.TenorMonths,
