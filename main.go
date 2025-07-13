@@ -1,4 +1,3 @@
-// File: main.go (Updated with DB instance for transactions)
 package main
 
 import (
