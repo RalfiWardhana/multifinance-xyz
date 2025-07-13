@@ -39,7 +39,7 @@ func SetupRoutes(
 
 		// Customer routes (authentication required)
 		customers := v1.Group("/customers")
-		customers.Use(middleware.AuthMiddleware(authUseCase)) // Enable auth middleware
+		customers.Use(middleware.AuthMiddleware(authUseCase))
 		{
 			customers.POST("", customerHandler.CreateCustomer)
 			customers.GET("", customerHandler.GetAllCustomers)
@@ -49,7 +49,7 @@ func SetupRoutes(
 
 		// Transaction routes (authentication required)
 		transactions := v1.Group("/transactions")
-		transactions.Use(middleware.AuthMiddleware(authUseCase)) // Enable auth middleware
+		transactions.Use(middleware.AuthMiddleware(authUseCase))
 		{
 			transactions.POST("", transactionHandler.CreateTransaction)
 			transactions.GET("", transactionHandler.GetAllTransactions)
@@ -58,7 +58,6 @@ func SetupRoutes(
 			transactions.GET("/customer/:customer_id", transactionHandler.GetTransactionsByCustomerID)
 		}
 
-		// Public customer registration (no auth required)
 		v1.POST("/register", customerHandler.CreateCustomer)
 	}
 }

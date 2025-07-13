@@ -1,24 +1,38 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"pt-xyz-multifinance/internal/domain/entity"
 	"pt-xyz-multifinance/internal/interfaces/dto"
 	"pt-xyz-multifinance/internal/usecase"
 	"pt-xyz-multifinance/pkg/response"
 	"strconv"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 type TransactionHandler struct {
 	transactionUseCase usecase.TransactionUseCase
+	// Add semaphore for controlling concurrent transaction creation
+	createSemaphore chan struct{}
+	// Add mutex map for per-customer locking
+	customerMutexMap sync.Map
 }
 
 func NewTransactionHandler(transactionUseCase usecase.TransactionUseCase) *TransactionHandler {
 	return &TransactionHandler{
 		transactionUseCase: transactionUseCase,
+		// Limit concurrent transaction creations to 10
+		createSemaphore: make(chan struct{}, 10),
 	}
+}
+
+func (h *TransactionHandler) getCustomerMutex(customerID uint64) *sync.Mutex {
+	actual, _ := h.customerMutexMap.LoadOrStore(customerID, &sync.Mutex{})
+	return actual.(*sync.Mutex)
 }
 
 func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
@@ -28,24 +42,57 @@ func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
 		return
 	}
 
-	transaction := &entity.Transaction{
-		CustomerID:        req.CustomerID,
-		TenorMonths:       req.TenorMonths,
-		OTRAmount:         req.OTRAmount,
-		AdminFee:          req.AdminFee,
-		InterestAmount:    req.InterestAmount,
-		AssetName:         req.AssetName,
-		AssetType:         req.AssetType,
-		TransactionSource: req.TransactionSource,
-		Status:            entity.StatusPending,
-	}
+	// Create a context with timeout for the operation
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
 
-	if err := h.transactionUseCase.CreateTransaction(c.Request.Context(), transaction); err != nil {
-		response.Error(c, http.StatusBadRequest, "Failed to create transaction", err.Error())
-		return
-	}
+	// Channel to receive the result
+	resultChan := make(chan struct {
+		transaction *entity.Transaction
+		err         error
+	}, 1)
 
-	response.Success(c, http.StatusCreated, "Transaction created successfully", h.toTransactionResponse(transaction))
+	// Process transaction creation in a goroutine
+	go func() {
+		// Acquire semaphore slot
+		h.createSemaphore <- struct{}{}
+		defer func() { <-h.createSemaphore }()
+
+		// Lock for specific customer to prevent concurrent transactions for same customer
+		customerMutex := h.getCustomerMutex(req.CustomerID)
+		customerMutex.Lock()
+		defer customerMutex.Unlock()
+
+		transaction := &entity.Transaction{
+			CustomerID:        req.CustomerID,
+			TenorMonths:       req.TenorMonths,
+			OTRAmount:         req.OTRAmount,
+			AdminFee:          req.AdminFee,
+			InterestAmount:    req.InterestAmount,
+			AssetName:         req.AssetName,
+			AssetType:         req.AssetType,
+			TransactionSource: req.TransactionSource,
+			Status:            entity.StatusPending,
+		}
+
+		err := h.transactionUseCase.CreateTransaction(ctx, transaction)
+		resultChan <- struct {
+			transaction *entity.Transaction
+			err         error
+		}{transaction, err}
+	}()
+
+	// Wait for result or timeout
+	select {
+	case result := <-resultChan:
+		if result.err != nil {
+			response.Error(c, http.StatusBadRequest, "Failed to create transaction", result.err.Error())
+			return
+		}
+		response.Success(c, http.StatusCreated, "Transaction created successfully", h.toTransactionResponse(result.transaction))
+	case <-ctx.Done():
+		response.Error(c, http.StatusRequestTimeout, "Transaction creation timeout", "The operation took too long to complete")
+	}
 }
 
 func (h *TransactionHandler) GetTransactionByID(c *gin.Context) {
@@ -150,44 +197,4 @@ func (h *TransactionHandler) toTransactionResponse(transaction *entity.Transacti
 		CreatedAt: transaction.CreatedAt,
 		UpdatedAt: transaction.UpdatedAt,
 	}
-}
-
-func (h *TransactionHandler) ApproveTransaction(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.ParseUint(idParam, 10, 64)
-	if err != nil {
-		response.Error(c, http.StatusBadRequest, "Invalid transaction ID", err.Error())
-		return
-	}
-
-	if err := h.transactionUseCase.ApproveTransaction(c.Request.Context(), id); err != nil {
-		response.Error(c, http.StatusInternalServerError, "Failed to approve transaction", err.Error())
-		return
-	}
-
-	response.Success(c, http.StatusOK, "Transaction approved successfully", nil)
-}
-
-func (h *TransactionHandler) RejectTransaction(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.ParseUint(idParam, 10, 64)
-	if err != nil {
-		response.Error(c, http.StatusBadRequest, "Invalid transaction ID", err.Error())
-		return
-	}
-
-	var req struct {
-		Reason string `json:"reason" binding:"required,min=5,max=500"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, http.StatusBadRequest, "Invalid request", err.Error())
-		return
-	}
-
-	if err := h.transactionUseCase.RejectTransaction(c.Request.Context(), id, req.Reason); err != nil {
-		response.Error(c, http.StatusInternalServerError, "Failed to reject transaction", err.Error())
-		return
-	}
-
-	response.Success(c, http.StatusOK, "Transaction rejected successfully", nil)
 }
