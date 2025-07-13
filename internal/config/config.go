@@ -40,8 +40,8 @@ func NewConfig() *Config {
 			Host:     getEnv("DB_HOST", "localhost"),
 			Port:     getEnv("DB_PORT", "3306"),
 			User:     getEnv("DB_USER", "root"),
-			Password: getEnv("DB_PASSWORD", ""),
-			Database: getEnv("DB_NAME", "pt_xyz_multifinance"),
+			Password: getEnv("DB_PASSWORD", "Secure789#"),
+			Database: getEnv("DB_NAME", "kredit_plus"),
 		},
 		JWT: JWTConfig{
 			Secret:     getEnv("JWT_SECRET", "xyz-secret-key"),
