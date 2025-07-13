@@ -42,12 +42,11 @@ func (r *transactionRepositoryImpl) GetByContractNumber(ctx context.Context, con
 
 func (r *transactionRepositoryImpl) GetByCustomerID(ctx context.Context, customerID uint64) ([]*entity.Transaction, error) {
 	var transactions []*entity.Transaction
-	if err := r.db.WithContext(ctx).Where("customer_id = ?", customerID).Find(&transactions).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Customer").Where("customer_id = ?", customerID).Find(&transactions).Error; err != nil {
 		return nil, fmt.Errorf("failed to get transactions by customer ID: %w", err)
 	}
 	return transactions, nil
 }
-
 func (r *transactionRepositoryImpl) Update(ctx context.Context, transaction *entity.Transaction) error {
 	if err := r.db.WithContext(ctx).Save(transaction).Error; err != nil {
 		return fmt.Errorf("failed to update transaction: %w", err)
