@@ -16,17 +16,14 @@ import (
 
 type TransactionHandler struct {
 	transactionUseCase usecase.TransactionUseCase
-	// Add semaphore for controlling concurrent transaction creation
-	createSemaphore chan struct{}
-	// Add mutex map for per-customer locking
-	customerMutexMap sync.Map
+	createSemaphore    chan struct{} // Add semaphore for controlling concurrent transaction creation
+	customerMutexMap   sync.Map      // Add mutex map for per-customer locking
 }
 
 func NewTransactionHandler(transactionUseCase usecase.TransactionUseCase) *TransactionHandler {
 	return &TransactionHandler{
 		transactionUseCase: transactionUseCase,
-		// Limit concurrent transaction creations to 10
-		createSemaphore: make(chan struct{}, 10),
+		createSemaphore:    make(chan struct{}, 10), // Limit concurrent transaction creations to 10
 	}
 }
 
