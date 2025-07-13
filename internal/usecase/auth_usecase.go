@@ -12,7 +12,7 @@ import (
 
 type AuthUseCase interface {
 	Login(ctx context.Context, nik string) (string, error)
-	ValidateToken(tokenString string) (jwt.MapClaims, error) // Changed return type
+	ValidateToken(tokenString string) (jwt.MapClaims, error)
 	GetCustomerFromToken(ctx context.Context, tokenString string) (*entity.Customer, error)
 }
 
@@ -24,7 +24,7 @@ type authUseCase struct {
 func NewAuthUseCase(customerRepo repository.CustomerRepository) AuthUseCase {
 	return &authUseCase{
 		customerRepo: customerRepo,
-		jwtSecret:    "xyz-secret-key", // Should come from config
+		jwtSecret:    "xyz-secret-key",
 	}
 }
 
@@ -50,7 +50,6 @@ func (uc *authUseCase) Login(ctx context.Context, nik string) (string, error) {
 	return tokenString, nil
 }
 
-// Fixed ValidateToken function
 func (uc *authUseCase) ValidateToken(tokenString string) (jwt.MapClaims, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -64,20 +63,18 @@ func (uc *authUseCase) ValidateToken(tokenString string) (jwt.MapClaims, error) 
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		return claims, nil // Return claims directly, not pointer
+		return claims, nil
 	}
 
 	return nil, fmt.Errorf("invalid token")
 }
 
-// Fixed GetCustomerFromToken function
 func (uc *authUseCase) GetCustomerFromToken(ctx context.Context, tokenString string) (*entity.Customer, error) {
 	claims, err := uc.ValidateToken(tokenString)
 	if err != nil {
 		return nil, err
 	}
 
-	// Type assertion with safety check
 	customerIDFloat, ok := claims["customer_id"].(float64)
 	if !ok {
 		return nil, fmt.Errorf("invalid customer_id in token")

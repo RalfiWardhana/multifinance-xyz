@@ -45,27 +45,23 @@ func (uc *customerUseCase) CreateCustomer(ctx context.Context, customer *entity.
 		}
 	}
 
-	// Validate that ALL required tenors (1,2,3,4) are provided
 	if err := utils.ValidateTenorLimits(tenorLimits); err != nil {
 		return fmt.Errorf("tenor validation failed: %w", err)
 	}
 
-	// Additional business validation
 	for _, limit := range limits {
-		// Validate individual tenor
+
 		if err := utils.ValidateTenor(limit.TenorMonths); err != nil {
 			return err
 		}
 
-		// Validate limit amount
 		if limit.LimitAmount <= 0 {
 			return fmt.Errorf("limit amount must be greater than 0 for tenor %d months", limit.TenorMonths)
 		}
 	}
 
-	// Start database transaction
 	return uc.db.Transaction(func(tx *gorm.DB) error {
-		// Check if NIK already exists
+
 		existingCustomer, err := uc.customerRepo.GetByNIK(ctx, customer.NIK)
 		if err == nil && existingCustomer != nil {
 			return fmt.Errorf("customer with NIK %s already exists", customer.NIK)
@@ -76,7 +72,6 @@ func (uc *customerUseCase) CreateCustomer(ctx context.Context, customer *entity.
 			return fmt.Errorf("failed to create customer: %w", err)
 		}
 
-		// Create customer limits
 		for _, limit := range limits {
 			limit.CustomerID = customer.ID
 			if err := uc.limitRepo.Create(ctx, limit); err != nil {

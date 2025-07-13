@@ -28,7 +28,6 @@ func NewCustomerHandler(customerUseCase usecase.CustomerUseCase) *CustomerHandle
 func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 	var req dto.CreateCustomerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		// Convert Gin validation errors to user-friendly messages
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
 			errorMsg := h.getValidationErrorMessage(validationErrors)
 			response.Error(c, http.StatusBadRequest, "Validation Failed", errorMsg)
@@ -38,20 +37,17 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 		return
 	}
 
-	// Custom validation for PT XYZ business rules
 	if validationErr := h.validateCustomerRequest(&req); validationErr != "" {
 		response.Error(c, http.StatusBadRequest, "Business Rule Validation Failed", validationErr)
 		return
 	}
 
-	// Parse birth date
 	birthDate, err := time.Parse("2006-01-02", req.BirthDate)
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, "Invalid birth date format", "Birth date must be in YYYY-MM-DD format (example: 1990-05-15)")
 		return
 	}
 
-	// Create customer entity
 	customer := &entity.Customer{
 		NIK:             req.NIK,
 		FullName:        req.FullName,
@@ -63,7 +59,6 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 		SelfiePhotoPath: req.SelfiePhotoPath,
 	}
 
-	// Create limits
 	var limits []*entity.CustomerLimit
 	for _, limitReq := range req.Limits {
 		limits = append(limits, &entity.CustomerLimit{
@@ -72,7 +67,6 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 		})
 	}
 
-	// Create customer with limits
 	if err := h.customerUseCase.CreateCustomer(c.Request.Context(), customer, limits); err != nil {
 		response.Error(c, http.StatusInternalServerError, "Failed to create customer", err.Error())
 		return
@@ -141,7 +135,6 @@ func (h *CustomerHandler) validateCustomerRequest(req *dto.CreateCustomerRequest
 	return "" // No validation errors
 }
 
-// getValidationErrorMessage converts Gin validation errors to user-friendly messages
 func (h *CustomerHandler) getValidationErrorMessage(validationErrors validator.ValidationErrors) string {
 	var messages []string
 
@@ -187,7 +180,6 @@ func (h *CustomerHandler) getValidationErrorMessage(validationErrors validator.V
 	return strings.Join(messages, "; ")
 }
 
-// getFieldDisplayName converts struct field names to user-friendly display names
 func getFieldDisplayName(field string) string {
 	switch field {
 	case "NIK":
@@ -263,7 +255,6 @@ func (h *CustomerHandler) GetAllCustomers(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
 
-	// Validate pagination parameters
 	if limit < 1 || limit > 100 {
 		response.Error(c, http.StatusBadRequest, "Invalid limit parameter", "Limit must be between 1 and 100")
 		return
