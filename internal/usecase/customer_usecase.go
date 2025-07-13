@@ -36,7 +36,7 @@ func NewCustomerUseCase(customerRepo repository.CustomerRepository, limitRepo re
 }
 
 func (uc *customerUseCase) CreateCustomer(ctx context.Context, customer *entity.Customer, limits []*entity.CustomerLimit) error {
-	// Convert limits to tenor-limit pairs for validation
+
 	tenorLimits := make([]utils.TenorLimit, len(limits))
 	for i, limit := range limits {
 		tenorLimits[i] = utils.TenorLimit{
@@ -71,7 +71,6 @@ func (uc *customerUseCase) CreateCustomer(ctx context.Context, customer *entity.
 			return fmt.Errorf("customer with NIK %s already exists", customer.NIK)
 		}
 
-		// Create customer
 		if err := uc.customerRepo.Create(ctx, customer); err != nil {
 			logger.Error("Failed to create customer", "error", err)
 			return fmt.Errorf("failed to create customer: %w", err)
@@ -93,7 +92,7 @@ func (uc *customerUseCase) CreateCustomer(ctx context.Context, customer *entity.
 
 func (uc *customerUseCase) DeleteCustomer(ctx context.Context, id uint64) error {
 	return uc.db.Transaction(func(tx *gorm.DB) error {
-		// First delete all customer limits
+
 		limits, err := uc.limitRepo.GetByCustomerID(ctx, id)
 		if err != nil {
 			return fmt.Errorf("failed to get customer limits: %w", err)
@@ -105,7 +104,6 @@ func (uc *customerUseCase) DeleteCustomer(ctx context.Context, id uint64) error 
 			}
 		}
 
-		// Then delete customer
 		if err := uc.customerRepo.Delete(ctx, id); err != nil {
 			return fmt.Errorf("failed to delete customer: %w", err)
 		}

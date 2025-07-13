@@ -7,7 +7,7 @@ import (
 	"pt-xyz-multifinance/internal/domain/entity"
 	"pt-xyz-multifinance/internal/domain/repository"
 	"pt-xyz-multifinance/pkg/logger"
-	"pt-xyz-multifinance/pkg/utils" // Add this import
+	"pt-xyz-multifinance/pkg/utils"
 	"time"
 
 	"gorm.io/gorm"
@@ -47,27 +47,23 @@ func NewTransactionUseCase(
 }
 
 func (uc *transactionUseCase) CreateTransaction(ctx context.Context, transaction *entity.Transaction) error {
-	// Validate tenor before processing
 	if err := utils.ValidateTenor(transaction.TenorMonths); err != nil {
 		return err
 	}
 
 	return uc.db.Transaction(func(tx *gorm.DB) error {
-		// Validate customer exists
+
 		_, err := uc.customerRepo.GetByID(ctx, transaction.CustomerID)
 		if err != nil {
 			return fmt.Errorf("customer not found: %w", err)
 		}
 
-		// Validate transaction limit
 		if err := uc.ValidateTransactionLimit(ctx, transaction.CustomerID, transaction.TenorMonths, transaction.OTRAmount); err != nil {
 			return err
 		}
 
-		// Generate contract number
 		transaction.ContractNumber = uc.generateContractNumber()
 
-		// Calculate installment amount if not provided
 		if transaction.InstallmentAmount == 0 {
 			transaction.InstallmentAmount = uc.calculateInstallmentAmount(
 				transaction.OTRAmount,
@@ -77,13 +73,11 @@ func (uc *transactionUseCase) CreateTransaction(ctx context.Context, transaction
 			)
 		}
 
-		// Create transaction
 		if err := uc.transactionRepo.Create(ctx, transaction); err != nil {
 			logger.Error("Failed to create transaction", "error", err)
 			return fmt.Errorf("failed to create transaction: %w", err)
 		}
 
-		// Update used limit
 		if err := uc.limitRepo.UpdateUsedAmount(ctx, transaction.CustomerID, transaction.TenorMonths, transaction.OTRAmount); err != nil {
 			logger.Error("Failed to update used amount", "error", err)
 			return fmt.Errorf("failed to update used amount: %w", err)
@@ -138,7 +132,6 @@ func (uc *transactionUseCase) RejectTransaction(ctx context.Context, id uint64, 
 			return fmt.Errorf("failed to update transaction status: %w", err)
 		}
 
-		// Rollback used limit
 		rollbackAmount := -transaction.OTRAmount
 		if err := uc.limitRepo.UpdateUsedAmount(ctx, transaction.CustomerID, transaction.TenorMonths, rollbackAmount); err != nil {
 			return fmt.Errorf("failed to rollback used amount: %w", err)
