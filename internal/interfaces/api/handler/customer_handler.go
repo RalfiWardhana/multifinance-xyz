@@ -75,7 +75,6 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 	response.Success(c, http.StatusCreated, "Customer created successfully with all required tenors", h.toCustomerResponse(customer))
 }
 
-// validateCustomerRequest performs PT XYZ specific business rule validations
 func (h *CustomerHandler) validateCustomerRequest(req *dto.CreateCustomerRequest) string {
 	// 1. Check if exactly 4 limits are provided
 	if len(req.Limits) < 4 {
@@ -132,7 +131,7 @@ func (h *CustomerHandler) validateCustomerRequest(req *dto.CreateCustomerRequest
 			missingTenors, providedTenors)
 	}
 
-	return "" // No validation errors
+	return ""
 }
 
 func (h *CustomerHandler) getValidationErrorMessage(validationErrors validator.ValidationErrors) string {

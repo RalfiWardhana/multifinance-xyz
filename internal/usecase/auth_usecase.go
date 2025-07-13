@@ -34,7 +34,6 @@ func (uc *authUseCase) Login(ctx context.Context, nik string) (string, error) {
 		return "", fmt.Errorf("invalid credentials")
 	}
 
-	// Generate JWT token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"customer_id": customer.ID,
 		"nik":         customer.NIK,
