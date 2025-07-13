@@ -47,22 +47,41 @@ func (r *limitRepositoryImpl) Update(ctx context.Context, limit *entity.Customer
 	return nil
 }
 
+// Simplified UpdateUsedAmount with proper transaction handling
 func (r *limitRepositoryImpl) UpdateUsedAmount(ctx context.Context, customerID uint64, tenorMonths int, amount float64) error {
-	// Using row-level locking for concurrency control
-	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+	// Execute within a transaction for atomicity
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var limit entity.CustomerLimit
+
+		// Use SELECT FOR UPDATE to lock the row
 		if err := tx.Set("gorm:query_option", "FOR UPDATE").
 			Where("customer_id = ? AND tenor_months = ?", customerID, tenorMonths).
 			First(&limit).Error; err != nil {
-			return err
+			return fmt.Errorf("failed to get customer limit for update: %w", err)
 		}
 
-		limit.UsedAmount += amount
-		return tx.Save(&limit).Error
-	}); err != nil {
-		return fmt.Errorf("failed to update used amount: %w", err)
-	}
-	return nil
+		// Calculate new used amount
+		newUsedAmount := limit.UsedAmount + amount
+
+		// Validate that used amount doesn't go negative (for rollbacks)
+		if newUsedAmount < 0 {
+			newUsedAmount = 0
+		}
+
+		// Validate that used amount doesn't exceed limit amount
+		if newUsedAmount > limit.LimitAmount {
+			return fmt.Errorf("used amount %.2f would exceed limit amount %.2f", newUsedAmount, limit.LimitAmount)
+		}
+
+		// Update the used amount
+		limit.UsedAmount = newUsedAmount
+
+		if err := tx.Save(&limit).Error; err != nil {
+			return fmt.Errorf("failed to update used amount: %w", err)
+		}
+
+		return nil
+	})
 }
 
 func (r *limitRepositoryImpl) Delete(ctx context.Context, id uint64) error {

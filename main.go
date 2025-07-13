@@ -1,4 +1,4 @@
-// File: main.go (Fixed version)
+// File: main.go (Updated with DB instance for transactions)
 package main
 
 import (
@@ -39,9 +39,9 @@ func main() {
 	transactionRepo := repository.NewTransactionRepository(db)
 	limitRepo := repository.NewLimitRepository(db)
 
-	// Initialize use cases
-	customerUseCase := usecase.NewCustomerUseCase(customerRepo, limitRepo)
-	transactionUseCase := usecase.NewTransactionUseCase(transactionRepo, customerRepo, limitRepo)
+	// Initialize use cases (pass DB instance for transaction handling)
+	customerUseCase := usecase.NewCustomerUseCase(customerRepo, limitRepo, db)
+	transactionUseCase := usecase.NewTransactionUseCase(transactionRepo, customerRepo, limitRepo, db)
 	authUseCase := usecase.NewAuthUseCase(customerRepo)
 
 	// Initialize handlers
@@ -51,7 +51,7 @@ func main() {
 
 	// Initialize Gin router
 	r := gin.New()
-	router.SetupRoutes(r, customerHandler, transactionHandler, authHandler, authUseCase) // Added authUseCase
+	router.SetupRoutes(r, customerHandler, transactionHandler, authHandler, authUseCase)
 
 	// Start server
 	logger.Info("Starting server on port " + cfg.Server.Port)

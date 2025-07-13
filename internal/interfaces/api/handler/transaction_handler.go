@@ -152,3 +152,43 @@ func (h *TransactionHandler) toTransactionResponse(transaction *entity.Transacti
 		UpdatedAt: transaction.UpdatedAt,
 	}
 }
+
+func (h *TransactionHandler) ApproveTransaction(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Invalid transaction ID", err.Error())
+		return
+	}
+
+	if err := h.transactionUseCase.ApproveTransaction(c.Request.Context(), id); err != nil {
+		response.Error(c, http.StatusInternalServerError, "Failed to approve transaction", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, "Transaction approved successfully", nil)
+}
+
+func (h *TransactionHandler) RejectTransaction(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Invalid transaction ID", err.Error())
+		return
+	}
+
+	var req struct {
+		Reason string `json:"reason" binding:"required,min=5,max=500"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, "Invalid request", err.Error())
+		return
+	}
+
+	if err := h.transactionUseCase.RejectTransaction(c.Request.Context(), id, req.Reason); err != nil {
+		response.Error(c, http.StatusInternalServerError, "Failed to reject transaction", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, "Transaction rejected successfully", nil)
+}

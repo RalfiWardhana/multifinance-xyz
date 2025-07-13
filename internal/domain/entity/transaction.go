@@ -31,23 +31,23 @@ const (
 
 type Transaction struct {
 	ID                uint64            `json:"id" gorm:"primaryKey;autoIncrement"`
-	ContractNumber    string            `json:"contract_number" gorm:"unique;not null"`
-	CustomerID        uint64            `json:"customer_id" gorm:"not null"`
+	ContractNumber    string            `json:"contract_number" gorm:"type:varchar(50);unique;not null;index"`
+	CustomerID        uint64            `json:"customer_id" gorm:"not null;index"`
 	TenorMonths       int               `json:"tenor_months" gorm:"not null"`
-	OTRAmount         float64           `json:"otr_amount" gorm:"not null"`
-	AdminFee          float64           `json:"admin_fee" gorm:"not null"`
-	InstallmentAmount float64           `json:"installment_amount" gorm:"not null"`
-	InterestAmount    float64           `json:"interest_amount" gorm:"not null"`
-	AssetName         string            `json:"asset_name" gorm:"not null"`
-	AssetType         AssetType         `json:"asset_type" gorm:"not null"`
-	Status            TransactionStatus `json:"status" gorm:"default:PENDING"`
-	TransactionSource TransactionSource `json:"transaction_source" gorm:"not null"`
-	CreatedAt         time.Time         `json:"created_at" gorm:"autoCreateTime"`
+	OTRAmount         float64           `json:"otr_amount" gorm:"type:decimal(15,2);not null"`
+	AdminFee          float64           `json:"admin_fee" gorm:"type:decimal(15,2);not null"`
+	InstallmentAmount float64           `json:"installment_amount" gorm:"type:decimal(15,2);not null"`
+	InterestAmount    float64           `json:"interest_amount" gorm:"type:decimal(15,2);not null"`
+	AssetName         string            `json:"asset_name" gorm:"type:varchar(255);not null"`
+	AssetType         AssetType         `json:"asset_type" gorm:"type:enum('WHITE_GOODS','MOTOR','MOBIL');not null;index"`
+	Status            TransactionStatus `json:"status" gorm:"type:enum('PENDING','APPROVED','REJECTED','ACTIVE','COMPLETED','DEFAULTED');default:PENDING;index"`
+	TransactionSource TransactionSource `json:"transaction_source" gorm:"type:enum('ECOMMERCE','WEB','DEALER');not null"`
+	CreatedAt         time.Time         `json:"created_at" gorm:"autoCreateTime;index"`
 	UpdatedAt         time.Time         `json:"updated_at" gorm:"autoUpdateTime"`
 	DeletedAt         *time.Time        `json:"deleted_at" gorm:"index"`
 
 	// Relations
-	Customer Customer `json:"customer" gorm:"foreignKey:CustomerID"`
+	Customer Customer `json:"customer" gorm:"foreignKey:CustomerID;constraint:OnDelete:CASCADE"`
 }
 
 func (Transaction) TableName() string {
