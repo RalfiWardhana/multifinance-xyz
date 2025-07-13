@@ -44,7 +44,7 @@ func NewConfig() *Config {
 			Database: getEnv("DB_NAME", "kredit_plus"),
 		},
 		JWT: JWTConfig{
-			Secret:     getEnv("JWT_SECRET", "xyz-secret-key"),
+			Secret:     getEnv("JWT_SECRET", "cghjyads896yVHuJnK567"),
 			ExpiryTime: getEnvInt("JWT_EXPIRY_HOURS", 24),
 		},
 		LogLevel: getEnv("LOG_LEVEL", "info"),
