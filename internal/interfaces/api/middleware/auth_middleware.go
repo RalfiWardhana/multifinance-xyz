@@ -1,3 +1,4 @@
+// File: internal/interfaces/api/middleware/auth_middleware.go (Fixed version)
 package middleware
 
 import (
@@ -32,10 +33,24 @@ func AuthMiddleware(authUseCase usecase.AuthUseCase) gin.HandlerFunc {
 			return
 		}
 
-		claimsMap := *claims
-		customerID := uint64(claimsMap["customer_id"].(float64))
+		// Type assertion with safety check
+		customerIDFloat, ok := claims["customer_id"].(float64)
+		if !ok {
+			response.Error(c, http.StatusUnauthorized, "Invalid token claims", "Invalid customer_id in token")
+			c.Abort()
+			return
+		}
+
+		nikString, ok := claims["nik"].(string)
+		if !ok {
+			response.Error(c, http.StatusUnauthorized, "Invalid token claims", "Invalid nik in token")
+			c.Abort()
+			return
+		}
+
+		customerID := uint64(customerIDFloat)
 		c.Set("customer_id", customerID)
-		c.Set("nik", claimsMap["nik"].(string))
+		c.Set("nik", nikString)
 
 		c.Next()
 	}

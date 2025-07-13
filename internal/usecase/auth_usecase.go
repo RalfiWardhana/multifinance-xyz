@@ -1,3 +1,4 @@
+// File: internal/usecase/auth_usecase.go (Fixed version)
 package usecase
 
 import (
@@ -12,7 +13,7 @@ import (
 
 type AuthUseCase interface {
 	Login(ctx context.Context, nik string) (string, error)
-	ValidateToken(tokenString string) (*jwt.Claims, error)
+	ValidateToken(tokenString string) (jwt.MapClaims, error) // Changed return type
 	GetCustomerFromToken(ctx context.Context, tokenString string) (*entity.Customer, error)
 }
 
@@ -50,7 +51,8 @@ func (uc *authUseCase) Login(ctx context.Context, nik string) (string, error) {
 	return tokenString, nil
 }
 
-func (uc *authUseCase) ValidateToken(tokenString string) (*jwt.Claims, error) {
+// Fixed ValidateToken function
+func (uc *authUseCase) ValidateToken(tokenString string) (jwt.MapClaims, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -63,20 +65,25 @@ func (uc *authUseCase) ValidateToken(tokenString string) (*jwt.Claims, error) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		return &claims, nil
+		return claims, nil // Return claims directly, not pointer
 	}
 
 	return nil, fmt.Errorf("invalid token")
 }
 
+// Fixed GetCustomerFromToken function
 func (uc *authUseCase) GetCustomerFromToken(ctx context.Context, tokenString string) (*entity.Customer, error) {
 	claims, err := uc.ValidateToken(tokenString)
 	if err != nil {
 		return nil, err
 	}
 
-	claimsMap := *claims
-	customerID := uint64(claimsMap["customer_id"].(float64))
+	// Type assertion with safety check
+	customerIDFloat, ok := claims["customer_id"].(float64)
+	if !ok {
+		return nil, fmt.Errorf("invalid customer_id in token")
+	}
 
+	customerID := uint64(customerIDFloat)
 	return uc.customerRepo.GetByID(ctx, customerID)
 }

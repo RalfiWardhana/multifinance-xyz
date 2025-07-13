@@ -1,3 +1,4 @@
+// File: main.go (Fixed version)
 package main
 
 import (
@@ -50,7 +51,7 @@ func main() {
 
 	// Initialize Gin router
 	r := gin.New()
-	router.SetupRoutes(r, customerHandler, transactionHandler, authHandler)
+	router.SetupRoutes(r, customerHandler, transactionHandler, authHandler, authUseCase) // Added authUseCase
 
 	// Start server
 	logger.Info("Starting server on port " + cfg.Server.Port)

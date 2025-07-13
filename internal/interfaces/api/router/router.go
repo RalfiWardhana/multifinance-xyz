@@ -1,8 +1,10 @@
+// File: internal/interfaces/api/router/router.go (Fixed version with auth enabled)
 package router
 
 import (
 	"pt-xyz-multifinance/internal/interfaces/api/handler"
 	"pt-xyz-multifinance/internal/interfaces/api/middleware"
+	"pt-xyz-multifinance/internal/usecase"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,12 +15,14 @@ func SetupRoutes(
 	customerHandler *handler.CustomerHandler,
 	transactionHandler *handler.TransactionHandler,
 	authHandler *handler.AuthHandler,
+	authUseCase usecase.AuthUseCase, // Added authUseCase parameter
 ) {
 	// Global middleware
 	r.Use(middleware.CORSMiddleware())
 	r.Use(middleware.SecurityHeadersMiddleware())
 	r.Use(middleware.LoggingMiddleware())
 	r.Use(middleware.RateLimitMiddleware(100, time.Minute)) // 100 requests per minute
+	//r.Use(middleware.InputValidationMiddleware())           // Added input validation
 	r.Use(gin.Recovery())
 
 	// Health check
@@ -37,7 +41,7 @@ func SetupRoutes(
 
 		// Customer routes (authentication required)
 		customers := v1.Group("/customers")
-		// customers.Use(middleware.AuthMiddleware(authUseCase)) // Uncomment when auth is implemented
+		customers.Use(middleware.AuthMiddleware(authUseCase)) // Enable auth middleware
 		{
 			customers.POST("", customerHandler.CreateCustomer)
 			customers.GET("", customerHandler.GetAllCustomers)
@@ -47,7 +51,7 @@ func SetupRoutes(
 
 		// Transaction routes (authentication required)
 		transactions := v1.Group("/transactions")
-		// transactions.Use(middleware.AuthMiddleware(authUseCase)) // Uncomment when auth is implemented
+		transactions.Use(middleware.AuthMiddleware(authUseCase)) // Enable auth middleware
 		{
 			transactions.POST("", transactionHandler.CreateTransaction)
 			transactions.GET("", transactionHandler.GetAllTransactions)
@@ -55,5 +59,8 @@ func SetupRoutes(
 			transactions.PUT("/:id/status", transactionHandler.UpdateTransactionStatus)
 			transactions.GET("/customer/:customer_id", transactionHandler.GetTransactionsByCustomerID)
 		}
+
+		// Public customer registration (no auth required)
+		v1.POST("/register", customerHandler.CreateCustomer)
 	}
 }
