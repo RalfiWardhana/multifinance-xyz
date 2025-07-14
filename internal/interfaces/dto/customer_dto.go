@@ -13,26 +13,28 @@ type CreateCustomerRequest struct {
 	Salary          float64              `json:"salary" binding:"required,min=0"`
 	KTPPhotoPath    string               `json:"ktp_photo_path"`
 	SelfiePhotoPath string               `json:"selfie_photo_path"`
-	Limits          []CreateLimitRequest `json:"limits" binding:"required,min=1,max=4"`
+	Limits          []CreateLimitRequest `json:"limits" binding:"required,min=4,max=4"`
 }
 
 type CreateLimitRequest struct {
-	TenorMonths int     `json:"tenor_months" binding:"required,min=1,max=4"`
+	TenorMonths int     `json:"tenor_months" binding:"required,oneof=1 2 3 4"`
 	LimitAmount float64 `json:"limit_amount" binding:"required,min=1"`
 }
 
 type CustomerResponse struct {
-	ID              uint64    `json:"id"`
-	NIK             string    `json:"nik"`
-	FullName        string    `json:"full_name"`
-	LegalName       string    `json:"legal_name"`
-	BirthPlace      string    `json:"birth_place"`
-	BirthDate       time.Time `json:"birth_date"`
-	Salary          float64   `json:"salary"`
-	KTPPhotoPath    string    `json:"ktp_photo_path"`
-	SelfiePhotoPath string    `json:"selfie_photo_path"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID              uint64       `json:"id"`
+	UserID          uint64       `json:"user_id"`
+	NIK             string       `json:"nik"`
+	FullName        string       `json:"full_name"`
+	LegalName       string       `json:"legal_name"`
+	BirthPlace      string       `json:"birth_place"`
+	BirthDate       time.Time    `json:"birth_date"`
+	Salary          float64      `json:"salary"`
+	KTPPhotoPath    string       `json:"ktp_photo_path"`
+	SelfiePhotoPath string       `json:"selfie_photo_path"`
+	User            UserResponse `json:"user,omitempty"`
+	CreatedAt       time.Time    `json:"created_at"`
+	UpdatedAt       time.Time    `json:"updated_at"`
 }
 
 type CustomerLimitResponse struct {

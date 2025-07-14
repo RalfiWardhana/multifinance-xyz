@@ -34,6 +34,7 @@ func main() {
 	defer database.CloseConnection(db)
 
 	// Initialize repositories
+	userRepo := repository.NewUserRepository(db)
 	customerRepo := repository.NewCustomerRepository(db)
 	transactionRepo := repository.NewTransactionRepository(db)
 	limitRepo := repository.NewLimitRepository(db)
@@ -41,11 +42,11 @@ func main() {
 	// Initialize use cases (pass DB instance for transaction handling)
 	customerUseCase := usecase.NewCustomerUseCase(customerRepo, limitRepo, db)
 	transactionUseCase := usecase.NewTransactionUseCase(transactionRepo, customerRepo, limitRepo, db)
-	authUseCase := usecase.NewAuthUseCase(customerRepo)
+	authUseCase := usecase.NewAuthUseCase(userRepo, customerRepo, limitRepo, db)
 
 	// Initialize handlers
 	customerHandler := handler.NewCustomerHandler(customerUseCase)
-	transactionHandler := handler.NewTransactionHandler(transactionUseCase)
+	transactionHandler := handler.NewTransactionHandler(transactionUseCase, customerUseCase)
 	authHandler := handler.NewAuthHandler(authUseCase)
 
 	// Initialize Gin router
@@ -53,7 +54,15 @@ func main() {
 	router.SetupRoutes(r, customerHandler, transactionHandler, authHandler, authUseCase)
 
 	// Start server
-	logger.Info("Starting server on port " + cfg.Server.Port)
+	logger.Info("Starting PT XYZ Multifinance API server on port " + cfg.Server.Port)
+	logger.Info("Available endpoints:")
+	logger.Info("  POST /api/v1/auth/register - Register new user")
+	logger.Info("  POST /api/v1/auth/login - Login")
+	logger.Info("  GET  /api/v1/admin/customers - Get all customers (Admin only)")
+	logger.Info("  GET  /api/v1/customers/me - Get my profile (Customer)")
+	logger.Info("  POST /api/v1/transactions - Create transaction")
+	logger.Info("  GET  /health - Health check")
+
 	if err := r.Run(":" + cfg.Server.Port); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}

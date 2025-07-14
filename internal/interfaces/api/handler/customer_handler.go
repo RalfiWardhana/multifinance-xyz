@@ -26,6 +26,12 @@ func NewCustomerHandler(customerUseCase usecase.CustomerUseCase) *CustomerHandle
 }
 
 func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
+	role, exists := c.Get("role")
+	if !exists || role.(string) != string(entity.RoleAdmin) {
+		response.Error(c, http.StatusForbidden, "Access denied", "Only admin can create customers directly")
+		return
+	}
+
 	var req dto.CreateCustomerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
@@ -44,7 +50,7 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 
 	birthDate, err := time.Parse("2006-01-02", req.BirthDate)
 	if err != nil {
-		response.Error(c, http.StatusBadRequest, "Invalid birth date format", "Birth date must be in YYYY-MM-DD format (example: 1990-05-15)")
+		response.Error(c, http.StatusBadRequest, "Invalid birth date format", "Birth date must be in YYYY-MM-DD format")
 		return
 	}
 
@@ -72,11 +78,118 @@ func (h *CustomerHandler) CreateCustomer(c *gin.Context) {
 		return
 	}
 
-	response.Success(c, http.StatusCreated, "Customer created successfully with all required tenors", h.toCustomerResponse(customer))
+	response.Success(c, http.StatusCreated, "Customer created successfully", h.toCustomerResponse(customer))
+}
+
+func (h *CustomerHandler) GetMyProfile(c *gin.Context) {
+	customerID, exists := c.Get("customer_id")
+	if !exists {
+		response.Error(c, http.StatusBadRequest, "Customer ID not found", "Customer data not available")
+		return
+	}
+
+	customer, err := h.customerUseCase.GetCustomerByID(c.Request.Context(), customerID.(uint64))
+	if err != nil {
+		response.Error(c, http.StatusNotFound, "Customer not found", err.Error())
+		return
+	}
+
+	response.Success(c, http.StatusOK, "Customer profile retrieved successfully", h.toCustomerResponse(customer))
+}
+
+func (h *CustomerHandler) GetCustomerByID(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Invalid customer ID", "Customer ID must be a valid number")
+		return
+	}
+
+	role, _ := c.Get("role")
+	if role.(string) == string(entity.RoleCustomer) {
+		customerID, exists := c.Get("customer_id")
+		if !exists || customerID.(uint64) != id {
+			response.Error(c, http.StatusForbidden, "Access denied", "You can only access your own profile")
+			return
+		}
+	}
+
+	customer, err := h.customerUseCase.GetCustomerByID(c.Request.Context(), id)
+	if err != nil {
+		response.Error(c, http.StatusNotFound, "Customer not found", fmt.Sprintf("No customer found with ID: %d", id))
+		return
+	}
+
+	response.Success(c, http.StatusOK, "Customer retrieved successfully", h.toCustomerResponse(customer))
+}
+
+func (h *CustomerHandler) GetCustomerLimits(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Invalid customer ID", "Customer ID must be a valid number")
+		return
+	}
+
+	role, _ := c.Get("role")
+	if role.(string) == string(entity.RoleCustomer) {
+		customerID, exists := c.Get("customer_id")
+		if !exists || customerID.(uint64) != id {
+			response.Error(c, http.StatusForbidden, "Access denied", "You can only access your own limits")
+			return
+		}
+	}
+
+	limits, err := h.customerUseCase.GetCustomerLimits(c.Request.Context(), id)
+	if err != nil {
+		response.Error(c, http.StatusNotFound, "Customer limits not found", fmt.Sprintf("No limits found for customer ID: %d", id))
+		return
+	}
+
+	var limitResponses []dto.CustomerLimitResponse
+	for _, limit := range limits {
+		limitResponses = append(limitResponses, dto.CustomerLimitResponse{
+			ID:              limit.ID,
+			CustomerID:      limit.CustomerID,
+			TenorMonths:     limit.TenorMonths,
+			LimitAmount:     limit.LimitAmount,
+			UsedAmount:      limit.UsedAmount,
+			AvailableAmount: limit.AvailableAmount(),
+		})
+	}
+
+	response.Success(c, http.StatusOK, fmt.Sprintf("Found %d tenor limits for customer", len(limitResponses)), limitResponses)
+}
+
+func (h *CustomerHandler) GetAllCustomers(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+
+	if limit < 1 || limit > 100 {
+		response.Error(c, http.StatusBadRequest, "Invalid limit parameter", "Limit must be between 1 and 100")
+		return
+	}
+
+	if offset < 0 {
+		response.Error(c, http.StatusBadRequest, "Invalid offset parameter", "Offset must be 0 or greater")
+		return
+	}
+
+	customers, err := h.customerUseCase.GetAllCustomers(c.Request.Context(), limit, offset)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, "Failed to retrieve customers", err.Error())
+		return
+	}
+
+	var customerResponses []dto.CustomerResponse
+	for _, customer := range customers {
+		customerResponses = append(customerResponses, *h.toCustomerResponse(customer))
+	}
+
+	response.Success(c, http.StatusOK, fmt.Sprintf("Retrieved %d customers (limit: %d, offset: %d)", len(customerResponses), limit, offset), customerResponses)
 }
 
 func (h *CustomerHandler) validateCustomerRequest(req *dto.CreateCustomerRequest) string {
-
 	if len(req.Limits) < 4 {
 		missingCount := 4 - len(req.Limits)
 		return fmt.Sprintf("Incomplete tenor limits. You provided %d tenor(s), but PT XYZ requires exactly 4 tenors (1, 2, 3, 4 months). Missing %d tenor(s).",
@@ -93,7 +206,6 @@ func (h *CustomerHandler) validateCustomerRequest(req *dto.CreateCustomerRequest
 	providedTenors := make([]int, 0)
 
 	for i, limit := range req.Limits {
-
 		if limit.TenorMonths < 1 || limit.TenorMonths > 4 {
 			return fmt.Sprintf("Invalid tenor at position %d: %d months is not allowed. PT XYZ only accepts tenors: 1, 2, 3, 4 months.",
 				i+1, limit.TenorMonths)
@@ -200,83 +312,10 @@ func getFieldDisplayName(field string) string {
 	}
 }
 
-func (h *CustomerHandler) GetCustomerByID(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.ParseUint(idParam, 10, 64)
-	if err != nil {
-		response.Error(c, http.StatusBadRequest, "Invalid customer ID", "Customer ID must be a valid number")
-		return
-	}
-
-	customer, err := h.customerUseCase.GetCustomerByID(c.Request.Context(), id)
-	if err != nil {
-		response.Error(c, http.StatusNotFound, "Customer not found", fmt.Sprintf("No customer found with ID: %d", id))
-		return
-	}
-
-	response.Success(c, http.StatusOK, "Customer retrieved successfully", h.toCustomerResponse(customer))
-}
-
-func (h *CustomerHandler) GetCustomerLimits(c *gin.Context) {
-	idParam := c.Param("id")
-	id, err := strconv.ParseUint(idParam, 10, 64)
-	if err != nil {
-		response.Error(c, http.StatusBadRequest, "Invalid customer ID", "Customer ID must be a valid number")
-		return
-	}
-
-	limits, err := h.customerUseCase.GetCustomerLimits(c.Request.Context(), id)
-	if err != nil {
-		response.Error(c, http.StatusNotFound, "Customer limits not found", fmt.Sprintf("No limits found for customer ID: %d", id))
-		return
-	}
-
-	var limitResponses []dto.CustomerLimitResponse
-	for _, limit := range limits {
-		limitResponses = append(limitResponses, dto.CustomerLimitResponse{
-			ID:              limit.ID,
-			CustomerID:      limit.CustomerID,
-			TenorMonths:     limit.TenorMonths,
-			LimitAmount:     limit.LimitAmount,
-			UsedAmount:      limit.UsedAmount,
-			AvailableAmount: limit.AvailableAmount(),
-		})
-	}
-
-	response.Success(c, http.StatusOK, fmt.Sprintf("Found %d tenor limits for customer", len(limitResponses)), limitResponses)
-}
-
-func (h *CustomerHandler) GetAllCustomers(c *gin.Context) {
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
-
-	if limit < 1 || limit > 100 {
-		response.Error(c, http.StatusBadRequest, "Invalid limit parameter", "Limit must be between 1 and 100")
-		return
-	}
-
-	if offset < 0 {
-		response.Error(c, http.StatusBadRequest, "Invalid offset parameter", "Offset must be 0 or greater")
-		return
-	}
-
-	customers, err := h.customerUseCase.GetAllCustomers(c.Request.Context(), limit, offset)
-	if err != nil {
-		response.Error(c, http.StatusInternalServerError, "Failed to retrieve customers", err.Error())
-		return
-	}
-
-	var customerResponses []dto.CustomerResponse
-	for _, customer := range customers {
-		customerResponses = append(customerResponses, *h.toCustomerResponse(customer))
-	}
-
-	response.Success(c, http.StatusOK, fmt.Sprintf("Retrieved %d customers (limit: %d, offset: %d)", len(customerResponses), limit, offset), customerResponses)
-}
-
 func (h *CustomerHandler) toCustomerResponse(customer *entity.Customer) *dto.CustomerResponse {
-	return &dto.CustomerResponse{
+	response := &dto.CustomerResponse{
 		ID:              customer.ID,
+		UserID:          customer.UserID,
 		NIK:             customer.NIK,
 		FullName:        customer.FullName,
 		LegalName:       customer.LegalName,
@@ -288,4 +327,17 @@ func (h *CustomerHandler) toCustomerResponse(customer *entity.Customer) *dto.Cus
 		CreatedAt:       customer.CreatedAt,
 		UpdatedAt:       customer.UpdatedAt,
 	}
+
+	if customer.User.ID != 0 {
+		response.User = dto.UserResponse{
+			ID:        customer.User.ID,
+			Username:  customer.User.Username,
+			Email:     customer.User.Email,
+			Role:      customer.User.Role,
+			IsActive:  customer.User.IsActive,
+			CreatedAt: customer.User.CreatedAt.Format("2006-01-02 15:04:05"),
+		}
+	}
+
+	return response
 }

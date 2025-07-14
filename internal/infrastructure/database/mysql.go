@@ -40,16 +40,54 @@ func NewMySQLConnection(cfg config.DatabaseConfig) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to auto migrate: %w", err)
 	}
 
+	// Create default admin user if not exists
+	if err := createDefaultAdmin(db); err != nil {
+		logger.Error("Failed to create default admin", "error", err)
+	}
+
 	logger.Info("Successfully connected to MySQL database")
 	return db, nil
 }
 
 func autoMigrate(db *gorm.DB) error {
 	return db.AutoMigrate(
+		&entity.User{},
 		&entity.Customer{},
 		&entity.CustomerLimit{},
 		&entity.Transaction{},
 	)
+}
+
+func createDefaultAdmin(db *gorm.DB) error {
+	// Check if admin user already exists
+	var count int64
+	db.Model(&entity.User{}).Where("role = ?", entity.RoleAdmin).Count(&count)
+
+	if count > 0 {
+		logger.Info("Admin user already exists, skipping creation")
+		return nil
+	}
+
+	// Create default admin user
+	// Password: admin123 (hashed)
+	hashedPassword := "$2a$10$K5QzJ8gOLJ8K5QzJ8gOLJO5QzJ8gOLJ8K5QzJ8gOLJ8K5QzJ8gOLJO" // admin123
+
+	admin := &entity.User{
+		Username: "admin",
+		Email:    "admin@ptxyz.com",
+		Password: hashedPassword,
+		Role:     entity.RoleAdmin,
+		IsActive: true,
+	}
+
+	if err := db.Create(admin).Error; err != nil {
+		return fmt.Errorf("failed to create default admin: %w", err)
+	}
+
+	logger.Info("Default admin user created successfully", "username", "admin", "email", "admin@ptxyz.com")
+	logger.Info("Default admin password: admin123 (please change this in production)")
+
+	return nil
 }
 
 func CloseConnection(db *gorm.DB) {
