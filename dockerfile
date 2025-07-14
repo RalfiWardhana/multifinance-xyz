@@ -1,12 +1,11 @@
-# docker/Dockerfile
-# Multi-stage build for optimized production image
+# Multi-stage build untuk optimized production image
 FROM golang:1.22-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Install git and ca-certificates (needed for private repos and HTTPS)
-RUN apk add --no-cache git ca-certificates
+# Install dependencies yang diperlukan
+RUN apk add --no-cache git ca-certificates tzdata
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -17,31 +16,44 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
+# Build the application dengan optimasi
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-w -s -extldflags '-static'" \
+    -a -installsuffix cgo \
+    -o main .
 
 # Final stage: create minimal image
 FROM alpine:latest
 
-# Install ca-certificates for HTTPS requests
-RUN apk --no-cache add ca-certificates
+# Install ca-certificates untuk HTTPS requests dan timezone data
+RUN apk --no-cache add ca-certificates tzdata && \
+    addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -S appuser -G appgroup
 
-WORKDIR /root/
+# Set timezone
+ENV TZ=Asia/Jakarta
+
+WORKDIR /app
 
 # Copy the binary from builder stage
 COPY --from=builder /app/main .
 
-# Copy .env file if exists (optional)
+# Copy environment file jika ada
 COPY --from=builder /app/.env* ./
 
-# Create uploads directory
-RUN mkdir -p uploads
+# Create uploads directory dan set permissions
+RUN mkdir -p uploads/ktp uploads/selfie && \
+    chown -R appuser:appgroup /app && \
+    chmod +x main
+
+# Switch to non-root user untuk security
+USER appuser
 
 # Expose port
 EXPOSE 8080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Run the application
