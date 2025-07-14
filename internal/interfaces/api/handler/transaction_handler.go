@@ -16,7 +16,7 @@ import (
 
 type TransactionHandler struct {
 	transactionUseCase usecase.TransactionUseCase
-	customerUseCase    usecase.CustomerUseCase // Add customer use case
+	customerUseCase    usecase.CustomerUseCase
 	createSemaphore    chan struct{}
 	customerMutexMap   sync.Map
 }
@@ -41,7 +41,6 @@ func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
 		return
 	}
 
-	// Authorization check: customers can only create transactions for themselves
 	role, _ := c.Get("role")
 	if role.(string) == string(entity.RoleCustomer) {
 		customerID, exists := c.Get("customer_id")
@@ -56,11 +55,9 @@ func (h *TransactionHandler) CreateTransaction(c *gin.Context) {
 		}
 	}
 
-	// Create context with timeout
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
 	defer cancel()
 
-	// Channel to receive result
 	resultChan := make(chan struct {
 		transaction *entity.Transaction
 		err         error
@@ -152,7 +149,6 @@ func (h *TransactionHandler) GetTransactionsByCustomerID(c *gin.Context) {
 		return
 	}
 
-	// Additional authorization check for customers
 	role, _ := c.Get("role")
 	if role.(string) == string(entity.RoleCustomer) {
 		tokenCustomerID, exists := c.Get("customer_id")
@@ -177,7 +173,6 @@ func (h *TransactionHandler) GetTransactionsByCustomerID(c *gin.Context) {
 }
 
 func (h *TransactionHandler) UpdateTransactionStatus(c *gin.Context) {
-	// This endpoint is admin-only (enforced by middleware in router)
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 64)
 	if err != nil {

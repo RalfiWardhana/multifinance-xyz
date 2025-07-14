@@ -97,7 +97,6 @@ func (uc *authUseCase) Register(ctx context.Context, req *dto.RegisterRequest) (
 			return fmt.Errorf("failed to create user: %w", err)
 		}
 
-		// If role is CUSTOMER, create customer and limits
 		if req.Role == "CUSTOMER" {
 			birthDate, err := time.Parse("2006-01-02", req.CustomerData.BirthDate)
 			if err != nil {
@@ -120,7 +119,6 @@ func (uc *authUseCase) Register(ctx context.Context, req *dto.RegisterRequest) (
 				return fmt.Errorf("failed to create customer: %w", err)
 			}
 
-			// Create customer limits
 			for _, limitReq := range req.CustomerData.Limits {
 				limit := &entity.CustomerLimit{
 					CustomerID:  customer.ID,
@@ -223,8 +221,7 @@ func (uc *authUseCase) GetUserFromToken(ctx context.Context, tokenString string)
 }
 
 func (uc *authUseCase) GetCustomerFromUser(ctx context.Context, userID uint64) (*entity.Customer, error) {
-	// First, get all customers and find by UserID
-	// We need to modify customer repository to support GetByUserID
+
 	customers, err := uc.customerRepo.GetAll(ctx, 1000, 0) // Get many customers to find the one
 	if err != nil {
 		return nil, err

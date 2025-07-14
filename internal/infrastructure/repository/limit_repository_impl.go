@@ -58,20 +58,16 @@ func (r *limitRepositoryImpl) UpdateUsedAmount(ctx context.Context, customerID u
 			return fmt.Errorf("failed to get customer limit for update: %w", err)
 		}
 
-		// Calculate new used amount
 		newUsedAmount := limit.UsedAmount + amount
 
-		// Validate that used amount doesn't go negative (for rollbacks)
 		if newUsedAmount < 0 {
 			newUsedAmount = 0
 		}
 
-		// Validate that used amount doesn't exceed limit amount
 		if newUsedAmount > limit.LimitAmount {
 			return fmt.Errorf("used amount %.2f would exceed limit amount %.2f", newUsedAmount, limit.LimitAmount)
 		}
 
-		// Update the used amount
 		limit.UsedAmount = newUsedAmount
 
 		if err := tx.Save(&limit).Error; err != nil {
