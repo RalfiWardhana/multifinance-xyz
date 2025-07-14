@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: multifinance-app
+    ports:
+      - "8080:8080"
+    # Menggunakan host network untuk akses MySQL di host
+    network_mode: host
+    environment:
+      - DB_HOST=localhost
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=Secure789#
+      - DB_NAME=kredit_plus
+      - JWT_SECRET=cghjyads896yVHuJnK567
+      - SERVER_PORT=8080
+      - GIN_MODE=debug
+      - LOG_LEVEL=info
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+
+# Alternatif jika tidak mau pakai host network
+  # app-alternative:
+  #   build: .
+  #   container_name: multifinance-app-alt
+  #   ports:
+  #     - "8080:8080"
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   environment:
+  #     - DB_HOST=host.docker.internal
+  #     - DB_PORT=3306
+  #     - DB_USER=root
+  #     - DB_PASSWORD=Secure789#
+  #     - DB_NAME=kredit_plus
+  #     - JWT_SECRET=cghjyads896yVHuJnK567
+  #     - SERVER_PORT=8080
+  #     - GIN_MODE=debug
+  #   volumes:
+  #     - ./uploads:/app/uploads
+  #   restart: unless-stopped
