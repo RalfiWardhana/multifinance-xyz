@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # PT XYZ Multifinance API
 
 A comprehensive REST API for multifinance services built with Go, providing customer management, credit limit management, and transaction processing capabilities.
@@ -405,3 +406,6 @@ For general application debugging:
 ## License
 
 This project is proprietary software of PT XYZ Multifinance.
+=======
+# multifinance-xyz
+>>>>>>> 08740f22fe3a4e814cf3abb1f7edf43cb85e3bff
